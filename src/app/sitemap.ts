@@ -1,25 +1,36 @@
 import { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  const [posts, categories, tags, authors] = await Promise.all([
-    prisma.post.findMany({
-      where: { status: 'PUBLISHED' },
-      select: { slug: true, updatedAt: true },
-    }),
-    prisma.category.findMany({
-      select: { slug: true, updatedAt: true },
-    }),
-    prisma.tag.findMany({
-      select: { slug: true, updatedAt: true },
-    }),
-    prisma.authorProfile.findMany({
-      where: { isActive: true },
-      select: { slug: true, updatedAt: true },
-    }),
-  ]);
+  let posts: any[] = [];
+  let categories: any[] = [];
+  let tags: any[] = [];
+  let authors: any[] = [];
+
+  try {
+    [posts, categories, tags, authors] = await Promise.all([
+      prisma.post.findMany({
+        where: { status: 'PUBLISHED' },
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.category.findMany({
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.tag.findMany({
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.authorProfile.findMany({
+        where: { isActive: true },
+        select: { slug: true, updatedAt: true },
+      }),
+    ]);
+  } catch (error) {
+    console.warn('[sitemap] Database not accessible, falling back to static routes:', error);
+  }
 
   const staticPages: MetadataRoute.Sitemap = [
     {

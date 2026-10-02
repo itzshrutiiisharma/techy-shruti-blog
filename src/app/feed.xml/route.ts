@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  const posts = await prisma.post.findMany({
-    where: { status: 'PUBLISHED' },
-    orderBy: { publishedAt: 'desc' },
-    take: 20,
-    include: { author: true, category: true },
-  });
+  let posts: any[] = [];
+  try {
+    posts = await prisma.post.findMany({
+      where: { status: 'PUBLISHED' },
+      orderBy: { publishedAt: 'desc' },
+      take: 20,
+      include: { author: true, category: true },
+    });
+  } catch (error) {
+    console.warn('[feed.xml] Database not accessible, returning empty feed:', error);
+  }
 
   const rssFeedXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">

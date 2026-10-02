@@ -14,27 +14,35 @@ import { StayCurious } from "@/components/Magazine/StayCurious";
 import { MagazineFooter } from "@/components/Magazine/MagazineFooter";
 import { PageAnimations } from "@/components/UI/PageAnimations";
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const allPosts = await prisma.post.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { publishedAt: "desc" },
-    include: { author: true, category: true, tags: { include: { tag: true } } },
-  });
+  let allPosts: any[] = [];
+  let featuredPost: any = null;
+  let categories: any[] = [];
 
-  const featuredPost = await prisma.post.findFirst({
-    where: { status: "PUBLISHED", isFeatured: true },
-    orderBy: { publishedAt: "desc" },
-    include: { author: true, category: true, tags: { include: { tag: true } } },
-  });
+  try {
+    allPosts = await prisma.post.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: { publishedAt: "desc" },
+      include: { author: true, category: true, tags: { include: { tag: true } } },
+    });
+
+    featuredPost = await prisma.post.findFirst({
+      where: { status: "PUBLISHED", isFeatured: true },
+      orderBy: { publishedAt: "desc" },
+      include: { author: true, category: true, tags: { include: { tag: true } } },
+    });
+
+    categories = await prisma.category.findMany({
+      orderBy: { postCount: "desc" },
+      take: 7,
+    });
+  } catch (error) {
+    console.warn("[HomePage] Database not accessible during render:", error);
+  }
 
   const coverPost = featuredPost || (allPosts.length > 0 ? allPosts[0] : null);
-
-  const categories = await prisma.category.findMany({
-    orderBy: { postCount: "desc" },
-    take: 7,
-  });
 
   const formatPost = (p: any) => ({
     id: p.id,
