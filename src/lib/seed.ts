@@ -679,6 +679,7 @@ When I published my first tech article 3 years ago, I didn't expect it to grow i
     const dayDate = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const viewsCount = Math.floor(120 + Math.random() * 180);
     for (let j = 0; j < viewsCount; j++) {
+      const randomPost = createdPosts[Math.floor(Math.random() * createdPosts.length)];
       if (randomPost) {
         await prisma.analyticsEvent.create({
           data: {
