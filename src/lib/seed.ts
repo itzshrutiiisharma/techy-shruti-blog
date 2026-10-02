@@ -713,12 +713,14 @@ When I published my first tech article 3 years ago, I didn't expect it to grow i
   console.log('[Seed] Database seeded successfully with Techy.Shruti content!');
 }
 
-runSeed()
-  .then(() => {
-    console.log('[Seed] Done!');
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error('[Seed Error]', err);
-    process.exit(1);
-  });
+if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes('seed')) {
+  runSeed()
+    .then(() => {
+      console.log('[Seed] Done!');
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('[Seed Error]', err);
+      process.exit(1);
+    });
+}
