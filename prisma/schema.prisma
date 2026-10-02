@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  avatar        String?
+  role          String         @default("READER") // SUPER_ADMIN, ADMIN, EDITOR, AUTHOR, MODERATOR, READER
+  status        String         @default("ACTIVE") // ACTIVE, SUSPENDED, PENDING
+  emailVerified Boolean        @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  authorProfile AuthorProfile?
+  comments      Comment[]
+  bookmarks     Bookmark[]
+  media         Media[]
+  auditLogs     AuditLog[]
+}
+
+model AuthorProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  slug        String   @unique
+  bio         String?
+  avatar      String?
+  socialLinks String?  // JSON string: { twitter, linkedin, github, website }
+  website     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts       Post[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  image       String?
+  postCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts       Post[]
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  posts     PostTag[]
+}
+
+model Post {
+  id             String    @id @default(cuid())
+  title          String
+  slug           String    @unique
+  excerpt        String?
+  content        String
+  featuredImage  String?
+  authorId       String
+  author         AuthorProfile @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  status         String    @default("DRAFT") // DRAFT, SCHEDULED, PUBLISHED, ARCHIVED
+  visibility     String    @default("PUBLIC") // PUBLIC, MEMBERS, PRIVATE
+  publishedAt    DateTime?
+  scheduledAt    DateTime?
+  readingTime    Int       @default(1) // in minutes
+  viewCount      Int       @default(0)
+  likeCount      Int       @default(0)
+  bookmarkCount  Int       @default(0)
+  commentCount   Int       @default(0)
+  isFeatured     Boolean   @default(false)
+  isTrending     Boolean   @default(false)
+  seoTitle       String?
+  seoDescription String?
+  canonicalUrl   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tags           PostTag[]
+  comments       Comment[]
+  bookmarks      Bookmark[]
+  analytics      AnalyticsEvent[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([authorId])
+  @@index([categoryId])
+}
+
+model PostTag {
+  postId    String
+  tagId     String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([postId, tagId])
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parentId    String?
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentReplies")
+  authorName  String
+  authorEmail String?
+  content     String
+  status      String    @default("APPROVED") // PENDING, APPROVED, REJECTED, SPAM
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([postId])
+  @@index([status])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId])
+}
+
+model NewsletterSubscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  status         String    @default("ACTIVE") // ACTIVE, UNSUBSCRIBED
+  subscribedAt   DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([email])
+}
+
+model Media {
+  id          String   @id @default(cuid())
+  filename    String
+  url         String
+  type        String   // image/png, image/jpeg, etc.
+  size        Int      // in bytes
+  width       Int?
+  height      Int?
+  altText     String?
+  uploadedById String?
+  uploadedBy  User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([uploadedById])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  type      String   // PAGE_VIEW, POST_VIEW, SEARCH, BOOKMARK, SHARE
+  path      String
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  visitorId String?
+  sessionId String?
+  referrer  String?
+  source    String?  // direct, google, twitter, linkedin, etc.
+  device    String?  // desktop, mobile, tablet
+  browser   String?  // chrome, safari, firefox, edge
+  country   String?  // US, IN, GB, etc.
+  metadata  String?  // JSON string with extra details (e.g., search term)
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([postId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorEmail String
+  action    String   // POST_CREATED, POST_UPDATED, POST_PUBLISHED, USER_ROLE_CHANGED, etc.
+  entity    String   // Post, Category, User, Comment, Setting, etc.
+  entityId  String?
+  metadata  String?  // JSON string
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([actorId])
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // JSON string
+  updatedAt DateTime @updatedAt
+}
